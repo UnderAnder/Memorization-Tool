@@ -72,7 +72,6 @@ class Flashcards:
 
     def __init__(self, memo: Memo) -> None:
         self.memo = memo
-        self.flashcards = {}
 
     def add_new(self) -> None:
         question, answer = None, None
@@ -92,8 +91,8 @@ class Flashcards:
             return
 
         for row in rows:
-            allowed = ('y', 'n')
-            input_text = 'Please press "y" to see the answer or press "n" to skip:\n'
+            allowed = ('y', 'n', 'u')
+            input_text = 'press "y" to see the answer:\npress "n" to skip:\npress "u" to update:\n'
 
             print('Question:', row.question)
             raw_input = input(input_text)
@@ -102,8 +101,36 @@ class Flashcards:
                 raw_input = input(input_text)
             if raw_input == 'y':
                 print('Answer:', row.answer, '\n')
+            elif raw_input == 'u':
+                self.change(row)
 
         self.memo.change_state(self.memo.menu.main_menu)
+
+    def change(self, row):
+        allowed = ('d', 'e')
+        input_text = 'press "d" to delete the flashcard:\npress "e" to edit the flashcard:\n'
+        raw_input = input(input_text)
+        while raw_input not in allowed:
+            print(raw_input, 'is not an option')
+            raw_input = input(input_text)
+        if raw_input == 'e':
+            self.edit(row)
+        if raw_input == 'd':
+            self.session.delete(row)
+            self.session.commit()
+
+    def edit(self, row):
+        print('current question:', row.question)
+        question = input('please write a new question:\n')
+        if not question:
+            question = row.question
+        print('current answer:', row.answer)
+        answer = input('please write a new answer:\n')
+        if not answer:
+            answer = row.answer
+        row.question = question
+        row.answer = answer
+        self.session.commit()
 
 
 if __name__ == '__main__':
