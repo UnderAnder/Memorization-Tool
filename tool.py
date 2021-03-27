@@ -1,3 +1,21 @@
+from sqlalchemy import Column, Integer, String
+from sqlalchemy import create_engine
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
+Base = declarative_base()
+
+
+class Table(Base):
+    __tablename__ = 'flashcard'
+
+    id = Column(Integer, primary_key=True)
+    question = Column(String)
+    answer = Column(String)
+
+    def __repr__(self):
+        return f'{self.question}'
+
+
 class Memo:
     def __init__(self) -> None:
         self.run = True
@@ -12,6 +30,9 @@ class Memo:
     def exit_(self) -> None:
         print('Bye!')
         self.run = False
+
+    def change_state(self, func):
+        self.state = func
 
 
 class Menu:
@@ -41,11 +62,14 @@ class Menu:
         if raw_input not in allowed:
             print(raw_input, 'is not an option')
             return
-        raw_input = int(raw_input)
-        self.memo.state = options.get(list(options.keys())[raw_input - 1])
+        self.memo.change_state(options.get(list(options.keys())[int(raw_input) - 1]))
 
 
 class Flashcards:
+    engine = create_engine('sqlite:///flashcard.db?check_same_thread=False')
+    Base.metadata.create_all(engine)
+    session = sessionmaker(bind=engine)()
+
     def __init__(self, memo: Memo) -> None:
         self.memo = memo
         self.flashcards = {}
@@ -56,28 +80,30 @@ class Flashcards:
             question = input('Question:\n')
         while not answer:
             answer = input('Answer:\n')
-        self.flashcards[question] = answer
-        self.memo.state = self.memo.menu.add_menu
+        self.session.add(Table(question=question, answer=answer))
+        self.session.commit()
+        self.memo.change_state(self.memo.menu.add_menu)
 
     def practice(self) -> None:
-        if not self.flashcards:
+        rows = self.session.query(Table).all()
+        if not rows:
             print('There is no flashcard to practice!')
-            self.memo.state = self.memo.menu.main_menu
+            self.memo.change_state(self.memo.menu.main_menu)
             return
 
-        for question, answer in self.flashcards.items():
+        for row in rows:
             allowed = ('y', 'n')
             input_text = 'Please press "y" to see the answer or press "n" to skip:\n'
 
-            print('Question:', question)
+            print('Question:', row.question)
             raw_input = input(input_text)
             while raw_input not in allowed:
                 print(raw_input, 'is not an option')
                 raw_input = input(input_text)
             if raw_input == 'y':
-                print('Answer:', answer, '\n')
+                print('Answer:', row.answer, '\n')
 
-        self.memo.state = self.memo.menu.main_menu
+        self.memo.change_state(self.memo.menu.main_menu)
 
 
 if __name__ == '__main__':
