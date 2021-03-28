@@ -43,11 +43,10 @@ class Menu:
 
     def select_option(self, options: dict) -> None:
         allowed = [str(i) for i in range(1, len(options) + 1)]
-        raw_input = input()
-        if raw_input not in allowed:
-            print(raw_input, 'is not an option')
+        user_input = check_input(proper_values=allowed, message='is not an option', back=True)
+        if not user_input:
             return
-        self.memo.change_state(options.get(list(options.keys())[int(raw_input) - 1]))
+        self.memo.change_state(options.get(list(options.keys())[int(user_input) - 1]))
 
 
 class Flashcards:
@@ -73,15 +72,11 @@ class Flashcards:
         for row in rows:
             allowed = ('y', 'n', 'u')
             input_text = 'press "y" to see the answer:\npress "n" to skip:\npress "u" to update:\n'
-
             print('Question:', row.question)
-            raw_input = input(input_text)
-            while raw_input not in allowed:
-                print(raw_input, 'is not an option')
-                raw_input = input(input_text)
-            if raw_input == 'y':
+            user_input = check_input(input_text, proper_values=allowed, message='is not an option')
+            if user_input == 'y':
                 print('Answer:', row.answer, '\n')
-            elif raw_input == 'u':
+            elif user_input == 'u':
                 self.change(row)
 
         self.memo.change_state(self.memo.menu.main_menu)
@@ -90,13 +85,10 @@ class Flashcards:
     def change(row):
         allowed = ('d', 'e')
         input_text = 'press "d" to delete the flashcard:\npress "e" to edit the flashcard:\n'
-        raw_input = input(input_text)
-        while raw_input not in allowed:
-            print(raw_input, 'is not an option')
-            raw_input = input(input_text)
-        if raw_input == 'e':
+        user_input = check_input(input_text, proper_values=allowed, message='is not an option')
+        if user_input == 'e':
             Flashcards.edit(row)
-        if raw_input == 'd':
+        if user_input == 'd':
             DBWorker.delete(row)
 
     @staticmethod
@@ -110,6 +102,20 @@ class Flashcards:
         if not answer:
             answer = row.answer
         DBWorker.edit(row, question, answer)
+
+
+def check_input(*args, proper_values=None, message=None, back=False, **kwargs):
+    if proper_values is None:
+        raise ValueError()
+    while True:
+        raw = input(*args, **kwargs)
+        if raw not in proper_values:
+            if message:
+                print(raw, message)
+            if back:
+                return
+        else:
+            return raw
 
 
 if __name__ == '__main__':
