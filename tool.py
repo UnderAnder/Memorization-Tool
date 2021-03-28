@@ -1,19 +1,4 @@
-from sqlalchemy import Column, Integer, String
-from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
-Base = declarative_base()
-
-
-class Table(Base):
-    __tablename__ = 'flashcard'
-
-    id = Column(Integer, primary_key=True)
-    question = Column(String)
-    answer = Column(String)
-
-    def __repr__(self):
-        return f'{self.question}'
+from db import DBWorker
 
 
 class Memo:
@@ -66,10 +51,6 @@ class Menu:
 
 
 class Flashcards:
-    engine = create_engine('sqlite:///flashcard.db?check_same_thread=False')
-    Base.metadata.create_all(engine)
-    session = sessionmaker(bind=engine)()
-
     def __init__(self, memo: Memo) -> None:
         self.memo = memo
 
@@ -79,12 +60,11 @@ class Flashcards:
             question = input('Question:\n')
         while not answer:
             answer = input('Answer:\n')
-        self.session.add(Table(question=question, answer=answer))
-        self.session.commit()
+        DBWorker.add(question, answer)
         self.memo.change_state(self.memo.menu.add_menu)
 
     def practice(self) -> None:
-        rows = self.session.query(Table).all()
+        rows = DBWorker.get_all()
         if not rows:
             print('There is no flashcard to practice!')
             self.memo.change_state(self.memo.menu.main_menu)
@@ -106,7 +86,8 @@ class Flashcards:
 
         self.memo.change_state(self.memo.menu.main_menu)
 
-    def change(self, row):
+    @staticmethod
+    def change(row):
         allowed = ('d', 'e')
         input_text = 'press "d" to delete the flashcard:\npress "e" to edit the flashcard:\n'
         raw_input = input(input_text)
@@ -114,12 +95,12 @@ class Flashcards:
             print(raw_input, 'is not an option')
             raw_input = input(input_text)
         if raw_input == 'e':
-            self.edit(row)
+            Flashcards.edit(row)
         if raw_input == 'd':
-            self.session.delete(row)
-            self.session.commit()
+            DBWorker.delete(row)
 
-    def edit(self, row):
+    @staticmethod
+    def edit(row):
         print('current question:', row.question)
         question = input('please write a new question:\n')
         if not question:
@@ -128,9 +109,7 @@ class Flashcards:
         answer = input('please write a new answer:\n')
         if not answer:
             answer = row.answer
-        row.question = question
-        row.answer = answer
-        self.session.commit()
+        DBWorker.edit(row, question, answer)
 
 
 if __name__ == '__main__':
