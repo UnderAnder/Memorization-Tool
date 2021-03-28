@@ -12,6 +12,7 @@ class Table(Base):
     id = Column(Integer, primary_key=True)
     question = Column(String)
     answer = Column(String)
+    session = Column(Integer, default=1)
 
     def __repr__(self):
         return f'{self.question}'
@@ -19,27 +20,32 @@ class Table(Base):
 
 engine = create_engine('sqlite:///flashcard.db?check_same_thread=False')
 Base.metadata.create_all(engine)
-session = sessionmaker(bind=engine)()
+db_session = sessionmaker(bind=engine)()
 
 
 class DBWorker:
     @staticmethod
     def get_all():
-        rows = session.query(Table).all()
+        rows = db_session.query(Table).filter(Table.session < 4).order_by(Table.session).all()
         return rows
 
     @staticmethod
     def add(question, answer):
-        session.add(Table(question=question, answer=answer))
-        session.commit()
+        db_session.add(Table(question=question, answer=answer))
+        db_session.commit()
 
     @staticmethod
     def delete(row):
-        session.delete(row)
-        session.commit()
+        db_session.delete(row)
+        db_session.commit()
 
     @staticmethod
     def edit(row, question, answer):
         row.question = question
         row.answer = answer
-        session.commit()
+        db_session.commit()
+
+    @staticmethod
+    def session(row, session):
+        row.session = session
+        db_session.commit()

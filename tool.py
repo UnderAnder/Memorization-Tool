@@ -2,33 +2,26 @@ from db import DBWorker
 
 
 class Memo:
-    def __init__(self) -> None:
-        self.run = True
-
-    def start(self) -> None:
-        main_menu = self.init_menu()
-
-        while self.run:
-            main_menu()
-
-    def init_menu(self):
+    def menu_constructor(self):
         main_menu = Menu('main', back=True)
-        add_menu = Menu('add', back=True)
-        
+        add_menu = Menu('add', master=main_menu, back=True)
+
         main_add = Menu('Add flashcards', callback=add_menu)
-        main_practice = Menu('Practice flashcards', callback=Flashcards.practice)
+        main_practice = Menu('Practice flashcards', master=main_menu, callback=Flashcards.practice)
         main_exit = Menu('Exit', callback=self.exit_)
-        
+
         add_menu_add = Menu('Add a new flashcard', master=add_menu, callback=Flashcards.add_new)
         add_menu_exit = Menu('Exit', callback=main_menu)
-        
+
         main_menu.add_options(main_add, main_practice, main_exit)
         add_menu.add_options(add_menu_add, add_menu_exit)
-        return main_menu
 
-    def exit_(self) -> None:
+        main_menu()
+
+    @staticmethod
+    def exit_() -> None:
         print('Bye!')
-        self.run = False
+        exit()
 
 
 class Menu:
@@ -55,17 +48,16 @@ class Menu:
             if not user_choice:
                 self()
             self.options[int(user_choice) - 1]()
-        else:
-            if self.master:
-                self.master()
+        if self.master:
+            self.master()
 
     def add_options(self, *options):
         self.options += options
 
 
 class Flashcards:
-    @classmethod
-    def add_new(cls) -> None:
+    @staticmethod
+    def add_new() -> None:
         question, answer = None, None
         while not question:
             question = input('Question:\n')
@@ -73,8 +65,8 @@ class Flashcards:
             answer = input('Answer:\n')
         DBWorker.add(question, answer)
 
-    @classmethod
-    def practice(cls) -> None:
+    @staticmethod
+    def practice() -> None:
         rows = DBWorker.get_all()
         if not rows:
             print('There is no flashcard to practice!')
@@ -85,10 +77,23 @@ class Flashcards:
             input_text = 'press "y" to see the answer:\npress "n" to skip:\npress "u" to update:\n'
             print('Question:', row.question)
             user_choice = check_input(input_text, proper_values=allowed, message='is not an option')
-            if user_choice == 'y':
+            if user_choice == 'u':
+                Flashcards.change(row)
+                continue
+            elif user_choice == 'y':
                 print('Answer:', row.answer, '\n')
-            elif user_choice == 'u':
-                cls.change(row)
+
+            Flashcards.learning(row)
+
+    @staticmethod
+    def learning(row):
+        allowed = ('y', 'n')
+        input_text = 'press "y" if your answer is correct:\npress "n" if your answer is wrong:\n'
+        user_choice = check_input(input_text, proper_values=allowed, message='is not an option')
+        if user_choice == 'y':
+            DBWorker.session(row, row.session + 1)
+        else:
+            DBWorker.session(row, 1)
 
     @staticmethod
     def change(row):
@@ -128,4 +133,4 @@ def check_input(*args, proper_values: tuple = None, message: str = None, back: b
 
 
 if __name__ == '__main__':
-    Memo().start()
+    Memo().menu_constructor()
